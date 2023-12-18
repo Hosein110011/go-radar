@@ -11,5 +11,5 @@ var RegisterRoutes = func(router *mux.Router) {
 	router.HandleFunc("/rooms", controllers.GetRooms).Methods("GET")
 	router.HandleFunc("/jwt", controllers.JWT).Methods("GET")
 	router.HandleFunc("/games", controllers.GetGames).Methods("GET")
-	router.HandleFunc("/profile", controllers.GetUserProfile).Methods("GET")
+	router.HandleFunc("/api/v1/profile/", controllers.GetUserProfile).Methods("GET")
 }

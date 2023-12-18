@@ -27,18 +27,45 @@ type UserResult struct {
 	LikeStatus   string        `json:"like_status"`
 	LikeCount    int           `json:"like_count"`
 	DislikeCount int           `json:"dislike_count"`
-	LikedGames   []models.Game `json:"liked_games"`
+	LikedGames   []GameApiResponse `json:"liked_games"`
+}
+
+type GameApiResponse struct {
+	ID          string `json:"id"`
+	GameName    string `json:"game_name"`
+	PackageName string `json:"package_name"`
+	Image       string `json:"image"`
+	Banner      string `json:"banner"`
+	Platform    string `json:"platform"`
+	IsDeleted   bool   `json:"is_deleted"`
 }
 
 func CreateProfileResponse(userData *models.User) ApiResponse {
 	var userResult UserResult
+	var Games []models.Game
+	var FavouriteGames []GameApiResponse
+	
 
 	userResult.ID = userData.ID
 	userResult.Nickname = userData.Nickname
 	userResult.Username = userData.Username
 	userResult.IsReady = userData.IsReady
 	userResult.IsOnline = userData.IsOnline
-	userResult.LikedGames, _ = models.GetFavouriteGamesByUserID(userData.ID)
+	Games, _ = models.GetFavouriteGamesByUserID(userData.ID)
+
+	for _, game := range Games {
+		var FavouriteGame GameApiResponse
+		FavouriteGame.ID = game.ID
+		FavouriteGame.GameName = game.GameName
+		FavouriteGame.PackageName = game.PackageName
+		FavouriteGame.Image = game.Image
+		FavouriteGame.Banner = game.Banner
+		FavouriteGame.Platform = game.Platform
+		FavouriteGame.IsDeleted = game.IsDeleted
+		FavouriteGames = append(FavouriteGames, FavouriteGame)
+	}
+
+	userResult.LikedGames = FavouriteGames
 
 	// Assuming bio, photo, and room_id are nullable
 	if userData.Bio != "" {

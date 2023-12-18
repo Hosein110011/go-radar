@@ -55,6 +55,7 @@ func GetUserProfile(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		// Handle the error
 		fmt.Println(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	queryParams := r.URL.Query()
@@ -68,11 +69,13 @@ func GetUserProfile(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
+		fmt.Println(user)
 		var requestedUser *models.User
-		if userID != "" {
+		if (userID != "") && (user.ID != userID) {
 			requestedUser, err = models.GetUserByID(userID)
 			if err != nil {
 				http.Error(w, "user not found.", http.StatusNotFound)
+				return
 			}
 		} else {
 			requestedUser = user
