@@ -1,10 +1,9 @@
 package routes
 
 import (
-	"github.com/gorilla/mux"
 	"github.com/Hosein110011/go-radar/pkg/controllers"
+	"github.com/gorilla/mux"
 )
-
 
 var RegisterRoutes = func(router *mux.Router) {
 	router.HandleFunc("/users", controllers.GetProfile).Methods("GET")
@@ -12,4 +11,5 @@ var RegisterRoutes = func(router *mux.Router) {
 	router.HandleFunc("/jwt", controllers.JWT).Methods("GET")
 	router.HandleFunc("/games", controllers.GetGames).Methods("GET")
 	router.HandleFunc("/api/v1/profile/", controllers.GetUserProfile).Methods("GET")
+	router.HandleFunc("/api/v1/go-squad", controllers.GetSquad).Methods("GET")
 }
