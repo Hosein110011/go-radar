@@ -25,7 +25,7 @@ type User struct {
 	Friends        []*User         `gorm:"many2many:account_user_friends;joinForeignKey:from_user_id;joinReferences:to_user_id"`
 	Likes          []*User         `gorm:"many2many:account_user_likes;joinForeignKey:from_user_id;joinReferences:to_user_id"`
 	Dislikes       []*User         `gorm:"many2many:account_user_dislikes;joinForeignKey:from_user_id;joinReferences:to_user_id"`
-	Rooms          []Room          `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;foreignKey:owner_id"`
+	// Rooms          []*Room         `gorm:"many2many:chat_room_member;"`
 	FavouriteGames []FavouriteGame `gorm:"constraint:OnUpdate:CASCADE,OnDelete:SET NULL;foreignKey:user_id"`
 }
 
@@ -42,7 +42,7 @@ func GetAllUsers() []User {
 func GetUserByUsername(username string) (*User, error) {
 	var user User
 	// db.Where("username = ?", username).Preload("Friends").Preload("Likes").Preload("Dislikes").Preload("Rooms").First(&user)
-	result := db.Preload("Friends").Preload("Likes").Preload("Dislikes").Preload("Rooms").First(&user, "username = ?", username)
+	result := db.Preload("Friends").Preload("Likes").Preload("Dislikes").First(&user, "username = ?", username)
 	if result.Error != nil {
 		return nil, result.Error
 	}
@@ -67,9 +67,25 @@ func GetFavouriteGamesByUserID(userID string) ([]Game, error) {
 
 func GetUserByID(userID string) (*User, error) {
 	var user User
-	result := db.Preload("Friends").Preload("Likes").Preload("Dislikes").Preload("Rooms").Preload("FavouriteGames").First(&user, "id = ?", userID)
+	result := db.Preload("Friends").Preload("Likes").Preload("Dislikes").Preload("FavouriteGames").First(&user, "id = ?", userID)
 	if result.Error != nil {
 		return nil, result.Error
 	}
 	return &user, nil
+}
+
+
+func GetUserRoomIDs(userID string) ([]string, error) {
+    var roomIDs []string
+
+    // Assuming 'db' is your *gorm.DB instance
+    result := db.Table("chat_room_member").Select("room_id").
+              Where("user_id = ?", userID).
+              Scan(&roomIDs)
+
+    if result.Error != nil {
+        return nil, result.Error
+    }
+
+    return roomIDs, nil
 }

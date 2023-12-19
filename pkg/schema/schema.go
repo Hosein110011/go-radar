@@ -2,6 +2,8 @@ package schema
 
 import (
 	"github.com/Hosein110011/go-radar/pkg/models"
+	"time"
+	"fmt"
 )
 
 type ApiResponse struct {
@@ -15,7 +17,7 @@ type UserResult struct {
 	ID           string            `json:"id"`
 	Nickname     string            `json:"nickname"`
 	Username     string            `json:"username"`
-	Photo        *string           `json:"photo"` // Use pointer to allow null
+	Photo        string            `json:"photo"` // Use pointer to allow null
 	IsReady      bool              `json:"is_ready"`
 	IsOnline     bool              `json:"is_online"`
 	IsMine       bool              `json:"is_mine"`
@@ -38,7 +40,7 @@ type GameApiResponse struct {
 	IsDeleted   bool   `json:"is_deleted"`
 }
 
-func CreateProfileResponse(user, requestedUser *models.User) ApiResponse {
+func CreateProfileResponse(user, requestedUser *models.User) (ApiResponse, error) {
 	var userResult UserResult
 	var Games []models.Game
 	var FavouriteGames []GameApiResponse
@@ -48,8 +50,10 @@ func CreateProfileResponse(user, requestedUser *models.User) ApiResponse {
 	userResult.Username = requestedUser.Username
 	userResult.IsReady = requestedUser.IsReady
 	userResult.IsOnline = requestedUser.IsOnline
-	Games, _ = models.GetFavouriteGamesByUserID(requestedUser.ID)
-
+	Games, err := models.GetFavouriteGamesByUserID(requestedUser.ID)
+	if err != nil {
+		return ApiResponse{}, err
+	}
 	for _, game := range Games {
 		var FavouriteGame GameApiResponse
 		FavouriteGame.ID = game.ID
@@ -70,7 +74,7 @@ func CreateProfileResponse(user, requestedUser *models.User) ApiResponse {
 	}
 
 	if requestedUser.Photo != "" {
-		userResult.Photo = &requestedUser.Photo
+		userResult.Photo = ConvertPhotoUrl(requestedUser.Photo)
 	}
 
 	if user.ID == requestedUser.ID {
@@ -81,6 +85,7 @@ func CreateProfileResponse(user, requestedUser *models.User) ApiResponse {
 		for _, friend := range requestedUser.Friends {
 			if friend.ID == user.ID {
 				userResult.IsFriend = true
+				break
 			} else {
 				userResult.IsFriend = false
 			}
@@ -103,9 +108,12 @@ func CreateProfileResponse(user, requestedUser *models.User) ApiResponse {
 			}
 		}
 	}
-
-	if len(requestedUser.Rooms) != 0 {
-		userResult.RoomID = requestedUser.Rooms[0].ID
+	Rooms, err := models.GetUserRoomIDs(requestedUser.ID)
+	if err != nil {
+		return ApiResponse{}, err
+	}
+	if len(Rooms) != 0 {
+		userResult.RoomID = Rooms[0]
 	}
 	userResult.LikeCount = len(requestedUser.Likes)
 	userResult.DislikeCount = len(requestedUser.Dislikes)
@@ -116,37 +124,101 @@ func CreateProfileResponse(user, requestedUser *models.User) ApiResponse {
 		IsSuccess:  true,
 		StatusCode: 200,
 		Result:     userResult,
-	}
+	} , nil
 }
 
 //---------------------------------------------
 
-// type SquadApiResponse struct {
-// 	ID           string                   `json:"id"`
-// 	RoomName     string                   `json:"room_name"`
-// 	Owner        string                   `json:"owner"`
-// 	Game         string                   `json:"game"`
-// 	MemberLimit  int                      `json:"member_limit"`
-// 	Member       []AccountApiResponse     `json:"member"`
-// 	IsOwner      bool                     `json:"is_owner"`
-// 	Created      time.Time                `json:"created"`
-// 	UserID       string                   `json:"user_id"`
-// 	JoinRequests []JoinRequestApiResponse `json:"join_requests"`
-// }
+type SquadApiResponse struct {
+	ID           string                   `json:"id"`
+	RoomName     string                   `json:"room_name"`
+	Owner        string                   `json:"owner"`
+	Game         string                   `json:"game"`
+	MemberLimit  int                      `json:"member_limit"`
+	Member       []AccountApiResponse     `json:"member"`
+	IsOwner      bool                     `json:"is_owner"`
+	Created      time.Time                `json:"created"`
+	UserID       string                   `json:"user_id"`
+	JoinRequests []JoinRequestApiResponse `json:"join_requests"`
+}
 
-// type AccountApiResponse struct {
-// 	ID       string `json:"id"`
-// 	Nickname string `json:"nickname"`
-// 	Username string `json:"username"`
-// 	Photo    string `json:"photo"`
-// }
+type AccountApiResponse struct {
+	ID       string `json:"id"`
+	Nickname string `json:"nickname"`
+	Username string `json:"username"`
+	Photo    string `json:"photo"`
+	IsReady  bool   `json:"is_ready"`
+}
 
-// func CreateSquadResponse(userID string) (ApiResponse, error) {
-// 	var rooms []models.Room
+type JoinRequestApiResponse struct {
+	ID         string
+	FromUser   AccountApiResponse
+}
 
-// 	rooms, err := models.FindRoomByUser(userID)
-// 	if err != nil {
-// 		return nil, err
-// 	}
+func CreateSquadResponse(userID string) (ApiResponse, error) {
+	var rooms []models.Room
+	var SquadResult SquadApiResponse
+	var requests []JoinRequestApiResponse
 
-// }
+	rooms, err := models.FindRoomByUser(userID)
+	if err != nil {
+		return ApiResponse{}, err
+	}
+
+	room := rooms[0]
+	// fmt.Println(room)
+	SquadResult.ID = room.ID
+	SquadResult.RoomName = room.RoomName
+	SquadResult.Owner = room.Owner.Username
+	SquadResult.Game = room.GameID
+	SquadResult.MemberLimit = room.MemberLimit
+	SquadResult.Created = room.Created
+	for _, member := range room.Member {
+		var Account AccountApiResponse
+		Account.ID = member.ID
+		Account.Nickname = member.Nickname
+		Account.Username = member.Username
+		Account.Photo = ConvertPhotoUrl(member.Photo)
+		Account.IsReady = member.IsReady
+		SquadResult.Member = append(SquadResult.Member, Account)
+	}
+	if userID == room.Owner.ID {
+		SquadResult.IsOwner = true
+		joinRequests, err := models.GetJoinRequestByRoomID(room.ID)
+		if err != nil {
+			return ApiResponse{}, err
+		}
+		fmt.Println(joinRequests)
+		for _, req := range joinRequests {
+			var Account AccountApiResponse
+			var JoinRequest JoinRequestApiResponse
+			JoinRequest.ID = req.ID
+			user := req.FromUser
+			Account.ID = user.ID
+			Account.Nickname = user.Nickname
+			Account.Username = user.Username
+			Account.Photo = ConvertPhotoUrl(user.Photo)
+			Account.IsReady = user.IsReady
+			JoinRequest.FromUser = Account
+			requests = append(requests, JoinRequest)
+		}
+		SquadResult.JoinRequests = requests
+	} else {
+		SquadResult.IsOwner = false
+	}
+	SquadResult.UserID = userID
+	return ApiResponse{
+		Message:    "Squad",
+		IsSuccess:  true,
+		StatusCode: 200,
+		Result:     SquadResult,
+	} , nil
+	
+
+}
+
+
+func ConvertPhotoUrl(Url string) string {
+	NewUrl := "https://tz.radar.game/media/" + Url
+	return NewUrl
+}

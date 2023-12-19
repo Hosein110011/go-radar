@@ -80,8 +80,16 @@ func GetUserProfile(w http.ResponseWriter, r *http.Request) {
 		} else {
 			requestedUser = user
 		}
-		response := schema.CreateProfileResponse(user, requestedUser)
-		res, _ := json.Marshal(response)
+		response, err := schema.CreateProfileResponse(user, requestedUser)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusNotFound)
+			return
+		}
+		res, err := json.Marshal(response)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 		w.Header().Set("Content-Type", "application/json")
 		w.Write(res)
 	} else {
@@ -92,20 +100,43 @@ func GetUserProfile(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetSquad(w http.ResponseWriter, r *http.Request) {
-	// token, err := utils.GetTokenFromHeader(r)
-	// if err != nil {
-	// 	// Handle the error
-	// 	fmt.Println(err)
-	// 	http.Error(w, err.Error(), http.StatusInternalServerError)
-	// 	return
-	// }
-	// if claims, ok := token.Claims.(*utils.Claims); ok && token.Valid {
-	// 	// Use claims
-	// 	user, err := models.GetUserByUsername(claims.Username)
-	// 	if err != nil {
-	// 		http.Error(w, err.Error(), http.StatusInternalServerError)
-	// 		return
-	// 	}
+	token, err := utils.GetTokenFromHeader(r)
+	if err != nil {
+		// Handle the error
+		fmt.Println(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if claims, ok := token.Claims.(*utils.Claims); ok && token.Valid {
+		// Use claims
+		user, err := models.GetUserByUsername(claims.Username)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		response, err := schema.CreateSquadResponse(user.ID)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusNotFound)
+			return
+		}
+		res, err := json.Marshal(response)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(res)
+		} else {
+			fmt.Println("Invalid token")
+			http.Error(w, "Invalid token", http.StatusInternalServerError)
+			return
+		}
+}
 
-	// }
+
+func GetJoinReqs(w http.ResponseWriter, r *http.Request) {
+	reqs := models.GetAllJoinReqs()
+	res, _ := json.Marshal(reqs)
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(res)
 }
