@@ -31,21 +31,26 @@ func GetAllRooms() []Room {
 	return Rooms
 }
 
-func FindRoomByUser(userID string) ([]Room, error) {
-	var rooms []Room
+func FindRoomByUser(userID string) (Room, error) {
+	var room Room
 
-	result := db.Preload("Owner", func(db *gorm.DB) *gorm.DB {
+	result := db.Debug().Preload("Game", func(db *gorm.DB) *gorm.DB {
+		return db.Select("GameIDD", "ID")
+		}).Preload("Owner", func(db *gorm.DB) *gorm.DB {
 		return db.Select("ID", "Username")
 		}).Preload("Member", func(db *gorm.DB) *gorm.DB {
 			return db.Select("ID", "Username", "Nickname", "Photo", "IsReady")
 		}).Joins("JOIN chat_room_member on chat_room_member.room_id = chat_room.id").
 		Where("chat_room_member.user_id = ?", userID).
 		Where("is_deleted = ?", false).
-		Find(&rooms)
+		First(&room)
 
 	if result.Error != nil {
-		return nil, result.Error
+		return Room{}, result.Error
 	}
 
-	return rooms, nil
+	if err := db.Model(room).Association("Game").Find(&room.Game); err != nil {
+        return Room{}, err
+    }
+	return room, nil
 }

@@ -7,7 +7,8 @@ import "time"
 // pq "github.com/lib/pq"
 
 type Game struct {
-	ID          string `json:"id" gorm:"column:id;type:uuid;primary_key"`
+	ID          string `json:"id" gorm:"column:id;primary_key"`   
+	GameIDD      string `json:"game_id" gorm:"column:game_id;"`
 	GameName    string `json:"game_name" gorm:"size:122;uniqueIndex;"`
 	PackageName string `json:"package_name" gorm:"column:package_name;size:222;"`
 	Image       string `json:"image" gorm:"column:image;size:222;"`
@@ -39,3 +40,4 @@ func GetAllGames() []Game {
 	db.Find(&Games)
 	return Games
 }
+

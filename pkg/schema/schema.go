@@ -156,23 +156,23 @@ type JoinRequestApiResponse struct {
 }
 
 func CreateSquadResponse(userID string) (ApiResponse, error) {
-	var rooms []models.Room
+	var room models.Room
 	var SquadResult SquadApiResponse
 	var requests []JoinRequestApiResponse
 
-	rooms, err := models.FindRoomByUser(userID)
+	room, err := models.FindRoomByUser(userID)
 	if err != nil {
 		return ApiResponse{}, err
 	}
 
-	room := rooms[0]
 	// fmt.Println(room)
 	SquadResult.ID = room.ID
 	SquadResult.RoomName = room.RoomName
 	SquadResult.Owner = room.Owner.Username
-	SquadResult.Game = room.GameID
+	SquadResult.Game = room.Game.GameIDD
 	SquadResult.MemberLimit = room.MemberLimit
 	SquadResult.Created = room.Created
+	fmt.Println(room.Game)
 	for _, member := range room.Member {
 		var Account AccountApiResponse
 		Account.ID = member.ID
@@ -188,7 +188,7 @@ func CreateSquadResponse(userID string) (ApiResponse, error) {
 		if err != nil {
 			return ApiResponse{}, err
 		}
-		fmt.Println(joinRequests)
+		// fmt.Println(joinRequests)
 		for _, req := range joinRequests {
 			var Account AccountApiResponse
 			var JoinRequest JoinRequestApiResponse
@@ -219,6 +219,9 @@ func CreateSquadResponse(userID string) (ApiResponse, error) {
 
 
 func ConvertPhotoUrl(Url string) string {
+	if Url == "" {
+		return ""
+	}
 	NewUrl := "https://tz.radar.game/media/" + Url
 	return NewUrl
 }
