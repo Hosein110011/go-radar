@@ -126,17 +126,65 @@ func GetSquad(w http.ResponseWriter, r *http.Request) {
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.Write(res)
-		} else {
-			fmt.Println("Invalid token")
-			http.Error(w, "Invalid token", http.StatusInternalServerError)
-			return
-		}
+	} else {
+		fmt.Println("Invalid token")
+		http.Error(w, "Invalid token", http.StatusInternalServerError)
+		return
+	}
 }
-
 
 func GetJoinReqs(w http.ResponseWriter, r *http.Request) {
 	reqs := models.GetAllJoinReqs()
 	res, _ := json.Marshal(reqs)
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(res)
+}
+
+func GetMessages(w http.ResponseWriter, r *http.Request) {
+	token, err := utils.GetTokenFromHeader(r)
+	if err != nil {
+		// Handle the error
+		fmt.Println(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	queryParams := r.URL.Query()
+	// Get the user_id query parameter
+	userID := queryParams.Get("user_id")
+	// Check if user_id is provided
+	if claims, ok := token.Claims.(*utils.Claims); ok && token.Valid {
+		// Use claims
+		user, err := models.GetUserByUsername(claims.Username)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		fmt.Println(user)
+		var recipientUser *models.User
+		if (userID != "") && (user.ID != userID) {
+			recipientUser, err = models.GetUserByID(userID)
+			if err != nil {
+				http.Error(w, "user not found.", http.StatusNotFound)
+				return
+			}
+		} else {
+			http.Error(w, "user_id not provided or you are recipient too.", http.StatusNotFound)
+			return
+		}
+		fmt.Println(recipientUser)
+		session := models.GetSession()
+		messages := models.GetSortedMessages(session, userID, user.ID, 11)
+
+		res, err := json.Marshal(messages)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(res)
+	} else {
+		fmt.Println("Invalid token")
+		return
+	}
+
 }
